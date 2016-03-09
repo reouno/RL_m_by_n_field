@@ -2,15 +2,13 @@ module Lib
     ( get_actions
     , init_Qs
     , get_Qs
-    , temper, calc_p, choose_action, take_action
+    , temper, calc_p, take_action
     , choose_action'
-    --, elemN, split2list, elems_list
     , move
     , get_reward
     , update_Q
     , episode
     , episodes
-    , as
     , replace_mn
     , show_field
     ) where
@@ -75,20 +73,6 @@ calc_p qs temp = map (/ denom) numer
         numer = (map exp) . (map (/temp)) $ qs
         denom = sum numer
 
-choose_action :: (Num a, Ord a) => [a] -> a -> Int
-choose_action ps randNum =
-        let
-            ps_next = sum_reduce ps
-            sum_reduce [] = []
-            sum_reduce [x] = [x]
-            sum_reduce (x0:x1:xs) = (x0 + x1) : xs
-            choose_action' ps@(x0:_) len_ps randNum
-                | randNum <= x0 = len_ps - length ps
-                | randNum >  1  = error "randNum must be 1 or less."
-                | otherwise     = choose_action' ps_next len_ps randNum
-        in
-            choose_action' ps (length ps) randNum
-
 choose_action' ps@(x0:_) len_ps randNum
     | randNum <= x0 = len_ps - length ps
     | randNum >  1  = error "randNum must be 1 or less."
@@ -96,40 +80,13 @@ choose_action' ps@(x0:_) len_ps randNum
         where
             ps_next = sum_reduce ps
             sum_reduce [] = []
+            sum_reduce [x] = [x]
             sum_reduce (x0:x1:xs) = (x0 + x1) : xs
 
 int2Cross i qs = Map.keys qs !! i
 
 take_action :: Integral a => a -> [Double] -> Double -> Int
 take_action t qs randNum = choose_action' (calc_p qs $ temper t) (length qs) randNum
-
---elemN :: (Eq b, Eq a1, Num b, Num a, Num a1) => (a1, b) -> a1 -> b -> a
---elemN size m n =
---    let
---        --(m, n) = mn
---        m_max = fst size - 1
---        n_max = snd size - 1
---    in
---        if (m==0 || m==m_max) && (n==0 || n==n_max)
---            then 2
---        else if ((m==0 || m==m_max) && (n/=0) && (n/=n_max)) || ((n==0 || n==n_max) && (m/=0) && (m/=m_max))
---            then 3
---            else 4
---
---elems_list :: (Enum b, Eq b, Num t, Num b, Num a, Ord a) => (a, b) -> [t]
---elems_list size = elems_list' size 0
---    where
---        elems_list' size m_0 =
---            if m_0 > fst size - 1
---                then []
---                else map (elemN size m_0) [0..snd size - 1] ++ elems_list' size (m_0+1)
---
---split2list :: [Int] -> [a] -> [[a]]
---split2list [] _     = []
---split2list elems xs = xs_fst : split2list elems' xs_snd
---    where
---        (xs_fst, xs_snd) = splitAt (head elems) xs
---        elems' = drop 1 elems
 
 move :: (Num b, Num a) => (a, b) -> Lib.Cross -> (a, b)
 move current_position action
@@ -178,8 +135,6 @@ episodes count field qs randNum =
         if count > 999
             then qs'
             else episodes (count+1) field qs' $ round $ 100 * randNums!!0
-
-as = [ToUp, ToDown, ToLeft, ToRight]
 
 replace_mn :: (Eq a, Num a) => Int -> a -> t -> [[t]] -> [[t]]
 replace_mn m n new_value xs = replace_n m (replace_n n new_value $ xs!!m) xs
