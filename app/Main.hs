@@ -28,11 +28,12 @@ main = do
     print_field field_trace
 
 field :: [[Double]]
-field = [[  0,  0,  0,  0,  0],
-         [  0,  0,  0,  0,  0],
-         [  0,  0,-10,-10,  0],
-         [  0,  0,  0,  0,  0],
-         [  0,  0,-10,  0,100]]
+field = [[  0,  0,  0,  0,  0,  0],
+         [  0,  0,  0,  0,-10,  0],
+         [  0,  0,-10,  0,  0,  0],
+         [  0,  0,  0,-10,-10,  0],
+         [  0,-10,  0,  0,  0,  0],
+         [  0,  0,  0,  0,  0,100]]
 
 print_field :: [[[(Char)]]] -> IO ()
 print_field field = do
@@ -60,20 +61,3 @@ learned_actions field current_position qs trace = do
         then do
             return (trace' ++ [new_position])
         else learned_actions field new_position qs trace'
-
---step_by1 t field prev_position action qs randNums = do
---    let current_position = move prev_position action
---    let reward = get_reward field current_position
---    let (_, qs') = get_Qs field current_position qs $ round $ (100 * randNums!!0)
---    let qs'' = update_Q prev_position action reward qs' $ randNums!!1
---    let action' = Map.keys (qs'' Map.! current_position) !! (take_action t (Map.elems $ qs'' Map.! current_position) $ randNums!!2)
---    print $ "current_position  =  " ++ show current_position
---    print $ "reward            =  " ++ show reward
---    print $ "updated Q values  =  " ++ show qs''
---    print $ "action  =  " ++ show action'
---    putStrLn ""
---    if t > 100
---        then return ()
---        else step_by1 (t+1) field current_position action' qs'' $ drop 3 randNums
-
-
