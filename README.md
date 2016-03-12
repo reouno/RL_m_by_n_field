@@ -4,7 +4,7 @@ Q-learning agent that choose action by bolzmann selection in m by n field
 This project is for Haskell stack.
  
  
-Installation, build, and run
+For installation and execution
 
 
 Just input the following commands in terminal
