@@ -2,8 +2,10 @@ module Lib
     ( get_actions
     , init_Qs
     , get_Qs
-    , temper, calc_p, take_action
-    , choose_action'
+    , temper, calc_p
+    , normalize_Qs
+    , take_action
+    , choose_action
     , move
     , get_reward
     , update_Q
@@ -62,8 +64,9 @@ get_Qs field current_position qs randNum =
             where qs_init = init_Qs (get_actions field current_position) randNum
 
 temper :: Integral a => a -> Double
-temper t = 1 / log(0.01 * ((fromIntegral t) :: Double) + 1.1)
+temper t = 1 / log(0.1 * ((fromIntegral t) :: Double) + 1.1) + 0.1
 -- 温度（temperture）の関数、と言ってもここでは、十分な時間が経過すると0に収束する関数として1/logxを使った
+-- そして、これが0になるとまずいので、最小値を0.1にした
 
 map2List qs = Map.elems qs
 
@@ -73,10 +76,10 @@ calc_p qs temp = map (/ denom) numer
         numer = (map exp) . (map (/temp)) $ qs
         denom = sum numer
 
-choose_action' ps@(x0:_) len_ps randNum
+choose_action ps@(x0:_) len_ps randNum
     | randNum <= x0 = len_ps - length ps
     | randNum >  1  = error "randNum must be 1 or less."
-    | otherwise     = choose_action' ps_next len_ps randNum
+    | otherwise     = choose_action ps_next len_ps randNum
         where
             ps_next = sum_reduce ps
             sum_reduce [] = []
@@ -85,8 +88,21 @@ choose_action' ps@(x0:_) len_ps randNum
 
 int2Cross i qs = Map.keys qs !! i
 
+normalize_Qs qs = if maximum qs' > 10 then map (\x -> x*10 / maximum qs') qs' else qs'
+    where
+        qs' = map (\x -> x - maximum qs + minimum qs) qs -- lambda = x - (max - min)
+--        minimum_001 x
+--            | x <  0.01 && x > 0 = 0
+--            | x > -0.01 && x < 0 = 0
+-- take_actionの引数に入れる時にQ値を正規化すす
+-- まず、MaxとMinの中間の値を見つけてそれを0とする（すべての要素からその値を引く）
+-- これで、Max = - Min となった
+-- 次に、もしMax > 10なら、Max == 10となるように正規化する
+
 take_action :: Integral a => a -> [Double] -> Double -> Int
-take_action t qs randNum = choose_action' (calc_p qs $ temper t) (length qs) randNum
+take_action t qs randNum = choose_action (calc_p qs' $ temper t) (length qs) randNum
+    where qs' = normalize_Qs qs
+
 
 move :: (Num b, Num a) => (a, b) -> Lib.Cross -> (a, b)
 move current_position action
@@ -145,10 +161,8 @@ replace_mn m n new_value xs = replace_n m (replace_n n new_value $ xs!!m) xs
 
 show_field (_:trace) field =
     if length trace > 1
-        then show_field trace $ replace_mn (fromIntegral.fst.head $ trace :: Int) (snd.head $ trace) " + " field
+        then show_field trace $ replace_mn (fromIntegral.fst.head $ trace :: Int) (snd.head $ trace) " . " field
         else field''
             where
                 field' = replace_mn 0 0 "Start" field
                 field'' = replace_mn ((fromIntegral.length) field' - 1 :: Int) ((length.head $ field') - 1) "Goal" field'
-
-
