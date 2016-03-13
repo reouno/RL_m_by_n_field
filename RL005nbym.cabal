@@ -19,6 +19,7 @@ library
   build-depends:       base >= 4.7 && < 5
                      , random
                      , containers
+                     , vector
   default-language:    Haskell2010
 
 executable RL005nbym-exe
@@ -29,6 +30,8 @@ executable RL005nbym-exe
                      , RL005nbym
                      , containers
                      , random
+                     , vector
+                     , time
   default-language:    Haskell2010
 
 test-suite RL005nbym-test
