@@ -2,13 +2,14 @@ module Main where
 
 import Lib
 import System.Random
---import Text.Printf
-import qualified Data.Map as Map
+import qualified Data.Map.Lazy as Map
+import qualified Data.Vector as Vec
+import Data.Time (getCurrentTime, diffUTCTime)
 
 main :: IO ()
 main = do
     putStrLn "This is RL005mbyn."
-    print $ "environment is " ++ (show.length $ field) ++ " by " ++ (show.length $ field!!0) ++ " field."
+    print $ "environment is " ++ (show.length $ field) ++ " by " ++ (show.length $ field Vec.! 0) ++ " field."
     rand <- getStdRandom random :: IO Int
     r1 <- getStdRandom random :: IO Int
     let q = init_Qs (get_actions field (0,0)) rand
@@ -21,28 +22,33 @@ main = do
     --print $ "Agent visited " ++ (show.length.Map.keys $ learned_Qs) ++ " places :"
     --print.show.Map.keys $ learned_Qs
     putStrLn ""
-    let field_trace = show_field trace $ map (map show) field
+    let field_trace = show_field trace $ Vec.map (Vec.map show) field
     putStrLn "The field is following."
-    print_field $ map (map show) field
+    --print_field $ map (map show) field
+    print_field $ Vec.map (Vec.map show) field
     putStrLn "Trace of actions after learning of 1000 episodes :"
     print_field field_trace
+--    start <- getCurrentTime
+--    rate <- success_rate 10
+--    end <- getCurrentTime
+--    print $ "success rate of learning is " ++ show rate
+--    print $ "processing time is " ++ show (diffUTCTime end start) ++ " sec."
 
-field :: [[Double]]
-field = [[  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
-         [  0,  0,  0,  0,  0,  0,  0,  0,-10,  0],
-         [  0,  0,-10,  0,  0,-10,  0,  0,  0,  0],
-         [  0,  0,  0,  0,  0,  0,  0,  0,-10,  0],
-         [  0,  0,-10,  0,  0,-10,  0,  0,  0,  0],
-         [  0,  0,  0,  0,-10,  0,  0,-10,-10,  0],
-         [  0,-10,  0,  0,  0,  0,  0,  0,  0,  0],
-         [  0,  0,  0,  0,  0,  0,  0,  0,-10,  0],
-         [  0,-10,  0,-10,  0,  0,-10,  0,  0,  0],
-         [  0,  0,  0,  0,  0,  0,  0,  0,  0,100]]
+field :: Vec.Vector (Vec.Vector Double)
+field = Vec.fromList [Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+                      Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,-10,  0],
+                      Vec.fromList [  0,  0,-10,  0,  0,-10,  0,  0,  0,  0],
+                      Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,-10,  0],
+                      Vec.fromList [  0,  0,-10,  0,  0,-10,  0,  0,  0,  0],
+                      Vec.fromList [  0,  0,  0,  0,-10,  0,  0,-10,-10,  0],
+                      Vec.fromList [  0,-10,  0,  0,  0,  0,  0,  0,  0,  0],
+                      Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,-10,  0],
+                      Vec.fromList [  0,-10,  0,-10,  0,  0,-10,  0,  0,  0],
+                      Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,  0,100]]
 
-print_field :: [[[(Char)]]] -> IO ()
 print_field field = do
     let loop_i i | i < length field = do
-            let row = foldr (++) [] $ map (++ "\\t") (field !! i)
+            let row = Vec.foldr (++) [] $ Vec.map (++ "\\t") (field Vec.! i)
             let format = '"' : row ++ "\""
             putStrLn (read format :: String)
             putStrLn ""
@@ -50,22 +56,17 @@ print_field field = do
         loop_i _ = return ()
     loop_i 0
 
---learned_actions :: Foldable t =>
---                   [t a]
---                   -> (Int, Int)
---                   -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
---                   -> [(Int, Int)]
---                   -> IO [(Int, Int)]
 learned_actions field current_position qs trace = do
     r0 <- getStdRandom (randomR (0,0.9999)) :: IO Double
     let action = Map.keys (qs Map.! current_position) !! (take_action 1000 (Map.elems $ qs Map.! current_position) r0)
     let new_position = move current_position action
     let trace' = trace ++ [current_position]
-    if new_position == (length field - 1, length (field!!0) - 1)
+    if new_position == (length field - 1, length (field Vec.! 0) - 1)
         then do
             return (trace' ++ [new_position])
         else learned_actions field new_position qs trace'
-episode' t field prev_position action qs randNums = do
+
+episode_io t field prev_position action qs randNums = do
     let current_position = move prev_position action
     let reward = get_reward field current_position
     let (_, qs') = get_Qs field current_position qs $ round $ (100 * randNums!!0)
@@ -86,15 +87,15 @@ episode' t field prev_position action qs randNums = do
             print $ "action' = " ++ show action'
         else return ()
     print current_position
-    if current_position == (length field - 1, length (field!!0) - 1) -- coordinates of the Goal
+    if current_position == (length field - 1, length (field Vec.! 0) - 1) -- coordinates of the Goal
         then return (t+1, qs'')
-        else episode' (t+1) field current_position action' qs'' $ drop 3 randNums
+        else episode_io (t+1) field current_position action' qs'' $ drop 3 randNums
 
 step_by_step t field qs = do
     rand <- getStdRandom random :: IO Int
     let randNums = randomRs (0, 0.9999) $ mkStdGen rand :: [Double]
     let action = Map.keys (qs Map.! (0,0)) !! (take_action t (Map.elems $ qs Map.! (0,0)) $ randNums!!0)
-    (times_of_actions, qs') <- episode' t field (0, 0) action qs $ drop 1 randNums
+    (times_of_actions, qs') <- episode_io t field (0, 0) action qs $ drop 1 randNums
     print $ times_of_actions - t
     print $ "t = " ++ show t
     if t > 100
@@ -115,7 +116,7 @@ success_rate n = do
         loop i sum_i | i < n = do
             num <- learn_1000
             --print num
-            if num == length field + length (field!!0) - 1
+            if num == length field + length (field Vec.! 0) - 1
                 then do
                     --print $ "success rate is " ++ show (sum_i + 1) ++ "/" ++ show n
                     loop (i + 1) (sum_i + 1)
@@ -124,3 +125,4 @@ success_rate n = do
                     loop (i + 1) sum_i
         loop _ sum_i = return $ sum_i / n
     loop 0 0
+-- n回episodesを実行して、学習成功率を返す。

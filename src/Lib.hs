@@ -1,22 +1,25 @@
 module Lib
-    ( get_actions
+    ( get_barriers
+    , get_actions
     , init_Qs
     , get_Qs
-    , temper, calc_p
-    , normalize_Qs
+    , temper
+    , calc_p
+    --, normalize_Qs
     , take_action
-    , choose_action
+    --, choose_action
     , move
     , get_reward
     , update_Q
-    , episode
+    --, episode
     , episodes
-    , replace_mn
+    --, replace_mn
     , show_field
     ) where
 
 import System.Random
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
+import qualified Data.Vector as Vec
 
 -- データ型定義
 data Cross = ToUp | ToDown | ToLeft | ToRight
@@ -31,16 +34,16 @@ gamma = 0.9
 
 
 -- 関数
-get_barriers :: Foldable t => [t a] -> (Int, Int) -> [Lib.Cross]
+get_barriers :: Foldable t => Vec.Vector (t a) -> (Int, Int) -> [Lib.Cross]
 get_barriers field current_position = up ++ down ++ left ++ right
     where
         up = if fst current_position == 0 then [ToUp] else []
         down = if fst current_position == length field - 1 then [ToDown] else []
         left = if snd current_position == 0 then [ToLeft] else []
-        right = if snd current_position == length (field!!0) - 1 then [ToRight] else []
+        right = if snd current_position == length (field Vec.!0) - 1 then [ToRight] else []
 -- 移動不可能な方向のリストを作成（get_actions定義内で使用する）
 
-get_actions :: Foldable t => [t a] -> (Int, Int) -> [Lib.Cross]
+get_actions :: Foldable t => Vec.Vector (t a) -> (Int, Int) -> [Lib.Cross]
 get_actions field current_position = filter (flip notElem barriers) [ToUp, ToDown, ToLeft, ToRight]
     where barriers = get_barriers field current_position
 -- 移動可能な方向のリストを作成
@@ -50,8 +53,10 @@ init_Qs actions randNum = Map.fromList $ zip actions randNums
     where randNums = randomRs (0, 0.001) $ mkStdGen randNum :: [Double]
 -- 可能な行動のQ値を新たに生成する
 
+--init_Qs' field randNum = 
+
 get_Qs :: Foldable t =>
-                [t a]
+                Vec.Vector (t a)
                 -> (Int, Int)
                 -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
                 -> Int
@@ -62,6 +67,9 @@ get_Qs field current_position qs randNum =
         then (qs Map.! current_position, qs)
         else (qs_init, Map.insert current_position qs_init qs)
             where qs_init = init_Qs (get_actions field current_position) randNum
+
+--get_Qs :: (Int, Int) -> Vec.Vector (Vec.Vector a) -> a
+--get_Qs current_position qs = qs Vec.! (fst current_position) Vec.! (snd current_position)
 
 temper :: Integral a => a -> Double
 temper t = 1 / log(0.1 * ((fromIntegral t) :: Double) + 1.1) + 0.1
@@ -112,8 +120,8 @@ move current_position action
     | otherwise        = (fst current_position, snd current_position + 1)
 -- 座標を移動する（状態遷移）
 
-get_reward :: [[a]] -> (Int, Int) -> a
-get_reward field current_position = field!!(fst current_position)!!(snd current_position)
+get_reward :: Vec.Vector (Vec.Vector a) -> (Int, Int) -> a
+get_reward field current_position = field Vec.! (fst current_position) Vec.! (snd current_position)
 
 update_Q :: (Num a, Num b, Ord a, Ord b) =>
             (a, b)
@@ -129,6 +137,14 @@ update_Q prev_position action reward qs randNum = Map.alter new_qs prev_position
         q_prev = qs Map.! prev_position Map.! action
         max_qs = Map.foldr max 0 $ qs Map.! (move prev_position action)
 
+episode :: Integral a =>
+           a
+           -> Vec.Vector (Vec.Vector Double)
+           -> (Int, Int)
+           -> Lib.Cross
+           -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
+           -> [Double]
+           -> (a, Map.Map (Int, Int) (Map.Map Lib.Cross Double))
 episode t field prev_position action qs randNums =
     let
         current_position = move prev_position action
@@ -136,12 +152,17 @@ episode t field prev_position action qs randNums =
         (_, qs') = get_Qs field current_position qs $ round $ (100 * randNums!!0)
         qs'' = update_Q prev_position action reward qs' $ randNums!!1
         action' = Map.keys (qs'' Map.! current_position) !! (take_action t (Map.elems $ qs'' Map.! current_position) $ randNums!!2)
-
     in
         if reward > 0
             then (t+1, qs'')
             else episode (t+1) field current_position action' qs'' $ drop 3 randNums
 
+episodes :: Integral t =>
+            t
+            -> Vec.Vector (Vec.Vector Double)
+            -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
+            -> Int
+            -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
 episodes count field qs randNum =
     let
         randNums = randomRs (0,0.9999) $ mkStdGen randNum :: [Double]
@@ -159,10 +180,13 @@ replace_mn m n new_value xs = replace_n m (replace_n n new_value $ xs!!m) xs
         replace_n 0 new_value (x:xs) = new_value:xs
         replace_n n new_value (x:xs) = x:replace_n (n - 1) new_value xs
 
+show_field :: Integral a =>
+               [(a, Int)]
+               -> Vec.Vector (Vec.Vector [Char])
+               -> Vec.Vector (Vec.Vector [Char])
 show_field (_:trace) field =
     if length trace > 1
-        then show_field trace $ replace_mn (fromIntegral.fst.head $ trace :: Int) (snd.head $ trace) " . " field
-        else field''
+        then show_field trace $ field Vec.// [(fromIntegral.fst.head $ trace :: Int, (field Vec.! (fromIntegral.fst.head $ trace :: Int)) Vec.// [(snd.head $ trace, " . ")])]
+        else field'
             where
-                field' = replace_mn 0 0 "Start" field
-                field'' = replace_mn ((fromIntegral.length) field' - 1 :: Int) ((length.head $ field') - 1) "Goal" field'
+                field' = field Vec.// [(0, (field Vec.! 0) Vec.// [(0, "START")]), (9, (field Vec.! 9) Vec.// [(9, "GOAL")])]
