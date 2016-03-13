@@ -15,7 +15,7 @@ $ cd RL_m_by_n_field
 
 $ stack build
 
-Using build option "--ghc-options -O2" may shorten processing time.
+Using build option "--ghc-options -O2" may shorten processing time. Like following
 
 $ stack build --ghc-options -O2
 
