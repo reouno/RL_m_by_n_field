@@ -1,7 +1,7 @@
 # RL_m_by_n_field
 Q-learning agent that choose action by bolzmann selection in m by n field
 
-This project is for Haskell stack.
+This program is for Haskell stack.
  
  
 Installation
