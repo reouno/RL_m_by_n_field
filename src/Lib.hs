@@ -1,19 +1,16 @@
 module Lib
-    ( get_barriers
+    ( Cross
+    , get_barriers
     , get_actions
     , init_Qs
     , get_Qs
     , temper
     , calc_p
-    --, normalize_Qs
     , take_action
-    --, choose_action
     , move
     , get_reward
     , update_Q
-    --, episode
     , episodes
-    --, replace_mn
     , show_field
     ) where
 
@@ -26,12 +23,11 @@ data Cross = ToUp | ToDown | ToLeft | ToRight
               deriving (Eq, Show, Ord)
 
 -- 定数
-alpha :: Double
+alpha :: Double -- 学習率
 alpha = 0.2
 
-gamma :: Double
+gamma :: Double -- 割引率
 gamma = 0.9
-
 
 -- 関数
 get_barriers :: Foldable t => Vec.Vector (t a) -> (Int, Int) -> [Lib.Cross]
@@ -53,8 +49,6 @@ init_Qs actions randNum = Map.fromList $ zip actions randNums
     where randNums = randomRs (0, 0.001) $ mkStdGen randNum :: [Double]
 -- 可能な行動のQ値を新たに生成する
 
---init_Qs' field randNum = 
-
 get_Qs :: Foldable t =>
                 Vec.Vector (t a)
                 -> (Int, Int)
@@ -68,15 +62,10 @@ get_Qs field current_position qs randNum =
         else (qs_init, Map.insert current_position qs_init qs)
             where qs_init = init_Qs (get_actions field current_position) randNum
 
---get_Qs :: (Int, Int) -> Vec.Vector (Vec.Vector a) -> a
---get_Qs current_position qs = qs Vec.! (fst current_position) Vec.! (snd current_position)
-
 temper :: Integral a => a -> Double
 temper t = 1 / log(0.1 * ((fromIntegral t) :: Double) + 1.1) + 0.1
 -- 温度（temperture）の関数、と言ってもここでは、十分な時間が経過すると0に収束する関数として1/logxを使った
 -- そして、これが0になるとまずいので、最小値を0.1にした
-
-map2List qs = Map.elems qs
 
 calc_p :: Floating b => [b] -> b -> [b]
 calc_p qs temp = map (/ denom) numer
@@ -94,15 +83,10 @@ choose_action ps@(x0:_) len_ps randNum
             sum_reduce [x] = [x]
             sum_reduce (x0:x1:xs) = (x0 + x1) : xs
 
-int2Cross i qs = Map.keys qs !! i
-
 normalize_Qs qs = if maximum qs' > 10 then map (\x -> x*10 / maximum qs') qs' else qs'
     where
         qs' = map (\x -> x - maximum qs + minimum qs) qs -- lambda = x - (max - min)
---        minimum_001 x
---            | x <  0.01 && x > 0 = 0
---            | x > -0.01 && x < 0 = 0
--- take_actionの引数に入れる時にQ値を正規化すす
+-- take_actionの引数に入れる時にQ値を正規化する
 -- まず、MaxとMinの中間の値を見つけてそれを0とする（すべての要素からその値を引く）
 -- これで、Max = - Min となった
 -- 次に、もしMax > 10なら、Max == 10となるように正規化する
@@ -136,6 +120,7 @@ update_Q prev_position action reward qs randNum = Map.alter new_qs prev_position
         new_qs' _ = Just (q_prev + alpha * (reward + gamma * max_qs - q_prev))
         q_prev = qs Map.! prev_position Map.! action
         max_qs = Map.foldr max 0 $ qs Map.! (move prev_position action)
+-- Q値の更新にたぶん時間がかかっているから、ここだけ破壊的に行えれば、速くなりそう
 
 episode :: Integral a =>
            a
@@ -156,6 +141,7 @@ episode t field prev_position action qs randNums =
         if reward > 0
             then (t+1, qs'')
             else episode (t+1) field current_position action' qs'' $ drop 3 randNums
+-- これは、START(0, 0)から行動をはじめて、正の報酬を得るまで行動し続ける関数
 
 episodes :: Integral t =>
             t
@@ -172,13 +158,7 @@ episodes count field qs randNum =
         if count > 999
             then qs'
             else episodes (count+1) field qs' $ round $ 100 * randNums!!0
-
-replace_mn :: (Eq a, Num a) => Int -> a -> t -> [[t]] -> [[t]]
-replace_mn m n new_value xs = replace_n m (replace_n n new_value $ xs!!m) xs
-    where
-        replace_n _ _ [] = []
-        replace_n 0 new_value (x:xs) = new_value:xs
-        replace_n n new_value (x:xs) = x:replace_n (n - 1) new_value xs
+-- これは、episodeを1000回繰り返す関数
 
 show_field :: Integral a =>
                [(a, Int)]

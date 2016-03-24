@@ -18,18 +18,15 @@ main = do
     --putStrLn "Learned Q values are followings :"
     --print learned_Qs
     trace <- learned_actions field (0,0) learned_Qs []
-    --putStrLn ""
-    --print $ "Agent visited " ++ (show.length.Map.keys $ learned_Qs) ++ " places :"
-    --print.show.Map.keys $ learned_Qs
-    putStrLn ""
     let field_trace = show_field trace $ Vec.map (Vec.map show) field
     putStrLn "The field is following."
-    --print_field $ map (map show) field
     print_field $ Vec.map (Vec.map show) field
     putStrLn "Trace of actions after learning of 1000 episodes :"
     print_field field_trace
+
+-- 以下の5行は学習成功率測定用
 --    start <- getCurrentTime
---    rate <- success_rate 10
+--    rate <- success_rate 100
 --    end <- getCurrentTime
 --    print $ "success rate of learning is " ++ show rate
 --    print $ "processing time is " ++ show (diffUTCTime end start) ++ " sec."
@@ -46,6 +43,7 @@ field = Vec.fromList [Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
                       Vec.fromList [  0,-10,  0,-10,  0,  0,-10,  0,  0,  0],
                       Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,  0,100]]
 
+print_field :: Vec.Vector (Vec.Vector [Char]) -> IO ()
 print_field field = do
     let loop_i i | i < length field = do
             let row = Vec.foldr (++) [] $ Vec.map (++ "\\t") (field Vec.! i)
@@ -56,6 +54,12 @@ print_field field = do
         loop_i _ = return ()
     loop_i 0
 
+learned_actions :: Foldable t
+                   => Vec.Vector(t a)
+                   -> (Int, Int)
+                   -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
+                   -> [(Int, Int)]
+                   -> IO [(Int, Int)]
 learned_actions field current_position qs trace = do
     r0 <- getStdRandom (randomR (0,0.9999)) :: IO Double
     let action = Map.keys (qs Map.! current_position) !! (take_action 1000 (Map.elems $ qs Map.! current_position) r0)
@@ -66,6 +70,13 @@ learned_actions field current_position qs trace = do
             return (trace' ++ [new_position])
         else learned_actions field new_position qs trace'
 
+episode_io :: Int
+              -> Vec.Vector (Vec.Vector Double)
+              -> (Int, Int)
+              -> Lib.Cross
+              -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
+              -> [Double]
+              -> IO (Int, Map.Map (Int, Int) (Map.Map Lib.Cross Double))
 episode_io t field prev_position action qs randNums = do
     let current_position = move prev_position action
     let reward = get_reward field current_position
@@ -91,6 +102,10 @@ episode_io t field prev_position action qs randNums = do
         then return (t+1, qs'')
         else episode_io (t+1) field current_position action' qs'' $ drop 3 randNums
 
+step_by_step :: Int
+                -> Vec.Vector (Vec.Vector Double)
+                -> Map.Map (Int, Int) (Map.Map Lib.Cross Double)
+                -> IO ()
 step_by_step t field qs = do
     rand <- getStdRandom random :: IO Int
     let randNums = randomRs (0, 0.9999) $ mkStdGen rand :: [Double]
@@ -102,6 +117,7 @@ step_by_step t field qs = do
         then return ()
         else step_by_step (t+1) field qs'
 
+learn_1000 :: IO Int
 learn_1000 = do
     rand <- getStdRandom random :: IO Int
     r1 <- getStdRandom random :: IO Int
@@ -111,6 +127,7 @@ learn_1000 = do
     trace <- learned_actions field (0,0) learned_Qs []
     return $ length trace
 
+success_rate :: (Fractional r, Ord r) => r -> IO r
 success_rate n = do
     let 
         loop i sum_i | i < n = do
