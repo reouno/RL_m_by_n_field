@@ -22,4 +22,4 @@ $ stack build --ghc-options -O2
 Execution
 =========
 
-stack runghc app/Main.hs
+$ stack runghc app/Main.hs
