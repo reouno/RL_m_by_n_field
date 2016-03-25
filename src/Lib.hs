@@ -83,6 +83,7 @@ choose_action ps@(x0:_) len_ps randNum
             sum_reduce [x] = [x]
             sum_reduce (x0:x1:xs) = (x0 + x1) : xs
 
+normalize_Qs :: (Fractional b, Ord b) => [b] -> [b]
 normalize_Qs qs = if maximum qs' > 10 then map (\x -> x*10 / maximum qs') qs' else qs'
     where
         qs' = map (\x -> x - maximum qs + minimum qs) qs -- lambda = x - (max - min)
