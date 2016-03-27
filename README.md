@@ -23,3 +23,9 @@ Execution
 =========
 
 $ stack runghc app/Main.hs
+
+or
+
+$ stack exec RL005nbym-exe
+
+(The project name was "RL005nbym" when I first created this.)
