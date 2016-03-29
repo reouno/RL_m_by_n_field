@@ -2,6 +2,7 @@ module Main where
 
 import Lib
 import System.Random
+import qualified System.Random.SFMT as SFMT
 import qualified Data.Map.Lazy as Map
 import qualified Data.Vector as Vec
 import Data.Time (getCurrentTime, diffUTCTime)

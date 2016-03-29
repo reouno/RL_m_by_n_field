@@ -15,6 +15,7 @@ module Lib
     ) where
 
 import System.Random
+import qualified System.Random.SFMT as SFMT
 import qualified Data.Map.Strict as Map
 import qualified Data.Vector as Vec
 
