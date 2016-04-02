@@ -12,25 +12,25 @@ main = do
     putStrLn "This is RL005mbyn."
     print $ "environment is " ++ (show.length $ field) ++ " by " ++ (show.length $ field Vec.! 0) ++ " field."
 -- mt-pure64を使う
---    gen <- newPureMT
---    let (r0, gen') = randomWord64 gen
---    let (r1, _) = randomWord64 gen'
---    let q = init_Qs' (get_actions field (0,0)) r0
---    let qs = Map.fromList [((0,0),q)]
---    let learned_Qs = episodes' 0 field qs r1
---    trace <- learned_actions field (0,0) learned_Qs []
---    let field_trace = show_field trace $ Vec.map (Vec.map show) field
---    putStrLn "The field is following."
---    print_field $ Vec.map (Vec.map show) field
---    putStrLn "Trace of actions after learning of 1000 episodes :"
---    print_field field_trace
+    gen <- newPureMT
+    let (r0, gen') = randomWord64 gen
+    let (r1, _) = randomWord64 gen'
+    let q = init_Qs' (get_actions field (0,0)) r0
+    let qs = Map.fromList [((0,0),q)]
+    let learned_Qs = episodes' 0 field qs r1
+    trace <- learned_actions field (0,0) learned_Qs []
+    let field_trace = show_field trace $ Vec.map (Vec.map show) field
+    putStrLn "The field is following."
+    print_field $ Vec.map (Vec.map show) field
+    putStrLn "Trace of actions after learning of 1000 episodes :"
+    print_field field_trace
 
 -- 以下の5行は学習成功率測定用（ついでに時間も計る）
-    start <- getCurrentTime
-    rate <- success_rate 100
-    end <- getCurrentTime
-    print $ "success rate of learning is " ++ show rate
-    print $ "processing time is " ++ show (diffUTCTime end start) ++ " sec."
+--    start <- getCurrentTime
+--    rate <- success_rate 100
+--    end <- getCurrentTime
+--    print $ "success rate of learning is " ++ show rate
+--    print $ "processing time is " ++ show (diffUTCTime end start) ++ " sec."
 
 field :: Field Double
 field = Vec.fromList [Vec.fromList [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
